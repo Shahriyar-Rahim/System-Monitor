@@ -1,0 +1,24 @@
+{
+  "name": "system_monitor",
+  "version": "1.0.0",
+  "description": "Live CPU, memory, storage and network monitor",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shahriyar-Rahim/System-Monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Shahriyar-Rahim/System-Monitor/issues"
+  },
+  "homepage": "https://github.com/Shahriyar-Rahim/System-Monitor#readme",
+  "devDependencies": {
+    "electron": "^45.2.3"
+  }
+}
