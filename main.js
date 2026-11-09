@@ -1,10 +1,11 @@
 const { BrowserWindow, app } = require("electron");
 const fs = require("fs");
+const os = require("os")
 const path = require("path");
 const { eventLoopUtilization } = require("perf_hooks");
 
 
-// memory monitor state
+// memory monitor state helpers
 let previousCpu = null
 let previousNet = null
 let samples = 0
@@ -75,7 +76,36 @@ function warnOnce(key, m) {
   lastWarning[key] = date;
   addLogEvent("warning", m);
 }
+// measurement
+function getCpuUsage() {
+  const now = os.cpus().map((c) => {
+    const t = c.times
+    return {
+      idle: t.idle,
+      total: t.user + t.nice + t.sys + t.idle + t.irq,
+    };
+  })
 
+  let cores = []
+  if(previousCpu && previousCpu.length === now.length) {
+    cores = now.map((c, i) => {
+      const total = c.total  - previousCpu[i].total
+      const idle = c.idle - previousCpu[i].idle
+      
+      return total > 0 ? Math.round((100 * (total - idle)) / total) : 0 
+    })
+  }
+  previousCpu = now
+
+  const total = cores.length ? Math.round(cores.reduce((a, b) => a + b, 0) / cores.length) : 0
+  
+  return {
+    total,
+    cores
+  }
+}
+
+// main wind
 let nainWindow;
 let aboutWindow = null;
 const loadPreload = path.join(__dirname, "preload.js");
@@ -107,6 +137,7 @@ app.whenReady().then(() => {
   // addLogEvent('test', 'hello') //"TODO: delete this test"
   // console.log(readLog())
   // console.log(readSettings())
+  // setInterval(() => console.log("CPU", getCpuUsage()), 1000);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
