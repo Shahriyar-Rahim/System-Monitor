@@ -357,38 +357,47 @@ function getSystemInfo() {
 async function exportStats(win) {
   const result = await dialog.showSaveDialog(win, {
     title: "Export Statistics",
-    defaultPath: path.join(app.getPath('documents'), 'system-stats.json'),
+    defaultPath: path.join(app.getPath("documents"), "system-stats.json"),
     filters: [
       {
-        name: "JSON file", extensions: ['json']
+        name: "JSON file",
+        extensions: ["json"],
       },
-      { name: "CSV file", extensions: ['csv'] }
-    ]
-  })
+      { name: "CSV file", extensions: ["csv"] },
+    ],
+  });
 
-  if(result.canceled || !result.filePath) {
-    return { ok: false, canceled: true}
+  if (result.canceled || !result.filePath) {
+    return { ok: false, canceled: true };
   }
 
-  const isCsv = path.extname(result.filePath).toLowerCase() === '.csv';
+  const isCsv = path.extname(result.filePath).toLowerCase() === ".csv";
 
   const header =
     "time,cpu_percent,ram_percent,download_bytes_per_s,upload_bytes_per_s";
   const rows = history.map((h) => {
     const time = new Date(h.time).toISOString();
     return [time, h.cpu, h.ram, Math.round(h.rx), Math.round(h.tx)].join(",");
-  })
+  });
 
-  const content = isCsv ? [header].concat((rows).join('\n')) : JSON.stringify({
-    system: getSystemInfo(), peaks, history
-  }, null, 2)
+  const content = isCsv
+    ? [header].concat(rows.join("\n"))
+    : JSON.stringify(
+        {
+          system: getSystemInfo(),
+          peaks,
+          history,
+        },
+        null,
+        2,
+      );
 
-  fs.writeFileSync(result.filePath, content, 'utf-8')
+  fs.writeFileSync(result.filePath, content, "utf-8");
   return {
     ok: true,
     filePath: result.filePath,
-    count: history.length
-  }
+    count: history.length,
+  };
 }
 
 function registerIpcHandlers() {
@@ -403,71 +412,65 @@ function registerIpcHandlers() {
     };
   });
 
-  ipcMain.handle('settings:load', () => readSettings())
+  ipcMain.handle("settings:load", () => readSettings());
 
-  ipcMain.handle('settings:save', (e, s) => {
-    if(!s || typeof s !== 'object') {
+  ipcMain.handle("settings:save", (e, s) => {
+    if (!s || typeof s !== "object") {
       throw new Error("Settings must be an object");
     }
 
     const clamp = (value, min, max, fallback) => {
-      const n = Number(value)
+      const n = Number(value);
       return Number.isFinite(n)
         ? Math.min(max, Math.max(min, Math.round(n)))
         : fallback;
-    }
+    };
 
     const clean = {
-      refreshMs: clamp(
-        s.refreshMs,
-        500,
-        60000,
-        defaultSettings.refreshMs,
-      ),
+      refreshMs: clamp(s.refreshMs, 500, 60000, defaultSettings.refreshMs),
       warnCpu: clamp(s.warnCpu, 10, 100, defaultSettings.warnCpu),
       warnRam: clamp(s.warnRam, 10, 100, defaultSettings.warnRam),
       warnDisk: clamp(s.warnDisk, 10, 100, defaultSettings.warnDisk),
     };
-    
+
     writeSettings(clean);
     return {
       ok: true,
-      settings: clean
-    }
-  })
+      settings: clean,
+    };
+  });
 
-  ipcMain.handle('log:load', () => readLog().slice(-50).reverse());
-  ipcMain.handle('log:clear', ()=> {
-    writeLog([])
-    logVersion++
-    return{
-      ok: true
-    }
-  })
+  ipcMain.handle("log:load", () => readLog().slice(-50).reverse());
+  ipcMain.handle("log:clear", () => {
+    writeLog([]);
+    logVersion++;
+    return {
+      ok: true,
+    };
+  });
 
-  ipcMain.handle('app:get-data-path', () => getLogFilePath())
-  ipcMain.on('renderer:log', (e, m) => {
-    console.log('[From renderer]', m);
-  })
+  ipcMain.handle("app:get-data-path", () => getLogFilePath());
+  ipcMain.on("renderer:log", (e, m) => {
+    console.log("[From renderer]", m);
+  });
 
-  ipcMain.handle('stats:export', (e) => {
-    return exportStats(BrowserWindow.fromWebContents(e.sender))
-  })
+  ipcMain.handle("stats:export", (e) => {
+    return exportStats(BrowserWindow.fromWebContents(e.sender));
+  });
 
-  ipcMain.handle('app:open-about', () => {
+  ipcMain.handle("app:open-about", () => {
     openAboutWindow();
-  })
+  });
 
-  ipcMain.handle('app:get-stats', () => {
+  ipcMain.handle("app:get-stats", () => {
     return {
       samples,
       filePath: getLogFilePath(),
       version: app.getVersion(),
       electron: process.versions.electron,
-      node: process.versions.node
-    }
-  })
-
+      node: process.versions.node,
+    };
+  });
 }
 
 // main wind
@@ -497,9 +500,9 @@ function createWindow() {
 }
 
 function openAboutWindow() {
-  if(aboutWindow) {
-    aboutWindow.focus()
-    return
+  if (aboutWindow) {
+    aboutWindow.focus();
+    return;
   }
 
   aboutWindow = new BrowserWindow({
@@ -512,20 +515,70 @@ function openAboutWindow() {
     minimizable: false,
     show: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
-    } 
+      nodeIntegration: false,
+    },
   });
 
-  aboutWindow.loadFile('about.html')
-  aboutWindow.once('ready-to-show', () => {
-    aboutWindow.show()
-  })
+  aboutWindow.loadFile("about.html");
+  aboutWindow.once("ready-to-show", () => {
+    aboutWindow.show();
+  });
 
-  aboutWindow.on('closed', () => {
-    aboutWindow = null
-  })
+  aboutWindow.on("closed", () => {
+    aboutWindow = null;
+  });
+}
+
+function createMenu() {
+  const template = [
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "Export Statistics...",
+          click: () => exportStats(mainWindow),
+        },
+        {
+          label: "Open Data Folder",
+          click: () => shell.openPath(app.getPath("userData")),
+        },
+        { type: "separator" },
+        { role: "reload" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { role: "resetZoom" },
+        { type: "separator" },
+        { role: "toggleDevTools" },
+      ],
+    },
+    {
+      label: "Help",
+      submenu: [
+        { label: "About System Monitor", click: () => openAboutWindow() },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 app.whenReady().then(() => {
