@@ -1,5 +1,5 @@
-const { time } = require("console");
-const { BrowserWindow, app } = require("electron");
+const { time, count } = require("console");
+const { BrowserWindow, app, ipcMain, dialog } = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -176,28 +176,30 @@ function getDiskInfo() {
 function getNetworkTotals() {
   return new Promise((r) => {
     try {
-      if(process.platform === 'linux') {
+      if (process.platform === "linux") {
         let rx = 0;
         let tx = 0;
-        const names = []
+        const names = [];
 
-        fs.readFileSync('/proc/net/dev', 'utf-8').split("\n").slice(2).forEach((line) => {
+        fs.readFileSync("/proc/net/dev", "utf-8")
+          .split("\n")
+          .slice(2)
+          .forEach((line) => {
+            const [name, rest] = line.split(":");
 
-          const [name, rest] = line.split(':')
+            if (!rest || name.trim() === "lo") return;
+            const f = rest.trim().split(/\s+/);
 
-          if(!rest || name.trim() === "lo") return
-          const f = rest.trim().split(/\s+/)
+            rx += Number(f[0]) || 0;
+            tx += Number(f[8]) || 0;
 
-          rx += Number(f[0]) || 0;
-          tx += Number(f[8]) || 0;
-
-          names.push(name.trim())
-        })
+            names.push(name.trim());
+          });
         return r({
           rx,
           tx,
-          iface: names.join(', ')
-        })
+          iface: names.join(", "),
+        });
       }
 
       if (process.platform === "darwin") {
@@ -223,7 +225,6 @@ function getNetworkTotals() {
           });
 
           r({ rx, tx, iface: [...seen].join(", ") });
-
         });
       }
 
@@ -231,31 +232,36 @@ function getNetworkTotals() {
         "Get-NetAdapterStatistics",
         "Select-Object Name,ReceivedBytes,SentBytes",
         "ConvertTo-Json",
-      ].join(" | ")
+      ].join(" | ");
 
       const options = {
         timeout: 5000,
-        windowsHide: true
-      }
+        windowsHide: true,
+      };
 
-      execFile("powershell", ["-NoProfile", "-Command", script], options, (e, out) => {
-        if(e) return r(null)
-        try {
-          let list = JSON.parse(out)
-          if(!Array.isArray(list)) list = [list]
-          r({
-            rx: list.reduce((a, b) => a + b.ReceivedBytes, 0),
-            tx: list.reduce((a, b) => a + b.SentBytes, 0),
-            iface: list.map((x) => x.Name).join(", "),
-          });
-        } catch (error) {
-          r(null)
-        }
-      });
+      execFile(
+        "powershell",
+        ["-NoProfile", "-Command", script],
+        options,
+        (e, out) => {
+          if (e) return r(null);
+          try {
+            let list = JSON.parse(out);
+            if (!Array.isArray(list)) list = [list];
+            r({
+              rx: list.reduce((a, b) => a + b.ReceivedBytes, 0),
+              tx: list.reduce((a, b) => a + b.SentBytes, 0),
+              iface: list.map((x) => x.Name).join(", "),
+            });
+          } catch (error) {
+            r(null);
+          }
+        },
+      );
     } catch (error) {
-      r(null)
+      r(null);
     }
-  })
+  });
 }
 
 // combined snapshot
@@ -290,48 +296,48 @@ async function getSnapshot() {
     };
   }
 
-    samples++;
-    history.push({
-      time: now, 
-      cpu: cpu.total,
-      ram: memory.percent,
-      rx, 
-      tx
-    })
-    if(history.length > MAX_HISTORY) history.shift();
-    if(cpu.total> peaks.cpu) peaks.cpu = cpu.total;
-    if (memory.percent > peaks.ram) peaks.ram = memory.percent;
-    if (cpu.total >= settings.warnCpu) {
-      warnOnce("cpu", "CPU usage at " + cpu.total + "%");
-    }
+  samples++;
+  history.push({
+    time: now,
+    cpu: cpu.total,
+    ram: memory.percent,
+    rx,
+    tx,
+  });
+  if (history.length > MAX_HISTORY) history.shift();
+  if (cpu.total > peaks.cpu) peaks.cpu = cpu.total;
+  if (memory.percent > peaks.ram) peaks.ram = memory.percent;
+  if (cpu.total >= settings.warnCpu) {
+    warnOnce("cpu", "CPU usage at " + cpu.total + "%");
+  }
 
-    if (memory.percent >= settings.warnRam) {
-      warnOnce('ram', 'Memory usage at ' + memory.percent + '%')
-    }
+  if (memory.percent >= settings.warnRam) {
+    warnOnce("ram", "Memory usage at " + memory.percent + "%");
+  }
 
-    disks.forEach((d) => {
-      if(d.percent >= settings.warnDisk) {
-        warnOnce('disk' + d.name , "Storage " + d.name + " at " + d.percent + "%");
-      }
-    })
-
-    return{
-      time: now,
-      cpu,
-      memory,
-      disks,
-      network: {
-        rx,
-        tx,
-        totalRx: totals ? totals.rx : null,
-        totalsTx: totals ? totals.tx : null,
-        iface: totals ? totals.iface : "unavailable"
-      },
-      uptime: os.uptime(),
-      peaks,
-      history: history.slice(-60),
-      logVersion
+  disks.forEach((d) => {
+    if (d.percent >= settings.warnDisk) {
+      warnOnce("disk" + d.name, "Storage " + d.name + " at " + d.percent + "%");
     }
+  });
+
+  return {
+    time: now,
+    cpu,
+    memory,
+    disks,
+    network: {
+      rx,
+      tx,
+      totalRx: totals ? totals.rx : null,
+      totalsTx: totals ? totals.tx : null,
+      iface: totals ? totals.iface : "unavailable",
+    },
+    uptime: os.uptime(),
+    peaks,
+    history: history.slice(-60),
+    logVersion,
+  };
 }
 
 function getSystemInfo() {
@@ -346,6 +352,122 @@ function getSystemInfo() {
     cpuCount: cpus.length, // Call os.cpus().length directly
     totalMemory: os.totalmem(),
   };
+}
+
+async function exportStats(win) {
+  const result = await dialog.showSaveDialog(win, {
+    title: "Export Statistics",
+    defaultPath: path.join(app.getPath('documents'), 'system-stats.json'),
+    filters: [
+      {
+        name: "JSON file", extensions: ['json']
+      },
+      { name: "CSV file", extensions: ['csv'] }
+    ]
+  })
+
+  if(result.canceled || !result.filePath) {
+    return { ok: false, canceled: true}
+  }
+
+  const isCsv = path.extname(result.filePath).toLowerCase() === '.csv';
+
+  const header =
+    "time,cpu_percent,ram_percent,download_bytes_per_s,upload_bytes_per_s";
+  const rows = history.map((h) => {
+    const time = new Date(h.time).toISOString();
+    return [time, h.cpu, h.ram, Math.round(h.rx), Math.round(h.tx)].join(",");
+  })
+
+  const content = isCsv ? [header].concat((rows).join('\n')) : JSON.stringify({
+    system: getSystemInfo(), peaks, history
+  }, null, 2)
+
+  fs.writeFileSync(result.filePath, content, 'utf-8')
+  return {
+    ok: true,
+    filePath: result.filePath,
+    count: history.length
+  }
+}
+
+function registerIpcHandlers() {
+  ipcMain.handle("system:get-info", () => getSystemInfo());
+  ipcMain.handle("system:get-snapshot", () => getSnapshot());
+
+  ipcMain.handle("peaks:reset", () => {
+    peaks.cpu = 0;
+    peaks.ram = 0;
+    return {
+      ok: true,
+    };
+  });
+
+  ipcMain.handle('settings:load', () => readSettings())
+
+  ipcMain.handle('settings:save', (e, s) => {
+    if(!s || typeof s !== 'object') {
+      throw new Error("Settings must be an object");
+    }
+
+    const clamp = (value, min, max, fallback) => {
+      const n = Number(value)
+      return Number.isFinite(n)
+        ? Math.min(max, Math.max(min, Math.round(n)))
+        : fallback;
+    }
+
+    const clean = {
+      refreshMs: clamp(
+        s.refreshMs,
+        500,
+        60000,
+        defaultSettings.refreshMs,
+      ),
+      warnCpu: clamp(s.warnCpu, 10, 100, defaultSettings.warnCpu),
+      warnRam: clamp(s.warnRam, 10, 100, defaultSettings.warnRam),
+      warnDisk: clamp(s.warnDisk, 10, 100, defaultSettings.warnDisk),
+    };
+    
+    writeSettings(clean);
+    return {
+      ok: true,
+      settings: clean
+    }
+  })
+
+  ipcMain.handle('log:load', () => readLog().slice(-50).reverse());
+  ipcMain.handle('log:clear', ()=> {
+    writeLog([])
+    logVersion++
+    return{
+      ok: true
+    }
+  })
+
+  ipcMain.handle('app:get-data-path', () => getLogFilePath())
+  ipcMain.on('renderer:log', (e, m) => {
+    console.log('[From renderer]', m);
+  })
+
+  ipcMain.handle('stats:export', (e) => {
+    return exportStats(BrowserWindow.fromWebContents(e.sender))
+  })
+
+  ipcMain.handle('app:open-about', () => {
+    openAboutWindow();
+  })
+
+  ipcMain.handle('app:get-stats', () => {
+    return {
+      samples,
+      filePath: getLogFilePath(),
+      version: app.getVersion(),
+      electron: process.versions.electron,
+      node: process.versions.node
+    }
+  })
+
 }
 
 // main wind
@@ -374,7 +496,40 @@ function createWindow() {
   });
 }
 
+function openAboutWindow() {
+  if(aboutWindow) {
+    aboutWindow.focus()
+    return
+  }
+
+  aboutWindow = new BrowserWindow({
+    width: 400,
+    height: 360,
+    title: "About System Monitor",
+    parent: nainWindow && !nainWindow.isDestroyed() ? nainWindow : undefined,
+    modal: false,
+    resizable: false,
+    minimizable: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    } 
+  });
+
+  aboutWindow.loadFile('about.html')
+  aboutWindow.once('ready-to-show', () => {
+    aboutWindow.show()
+  })
+
+  aboutWindow.on('closed', () => {
+    aboutWindow = null
+  })
+}
+
 app.whenReady().then(() => {
+  registerIpcHandlers();
   createWindow();
 
   // addLogEvent('test', 'hello') //"TODO: delete this test"
