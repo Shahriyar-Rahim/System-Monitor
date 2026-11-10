@@ -2,9 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>System Monitor</title>
+    <link rel="stylesheet"  href="style.css">
 </head>
 <body>
-    <h1>System Monitor Starts Here</h1>
+    <div class="app">
+        <header class="top">
+            <div>
+                <h1>System Monitor</h1>
+                <p class="subtitle" id="systemLine">Loading..</p>
+            </div>
+
+            <div class="actions">
+                <label> Refresh
+                    <select id="refreshSelect">
+                        <option value="1000">1 s</option>
+                        <option value="2000">2 s</option>
+                        <option value="5000">5 s</option>
+                        <option value="10000">10 s</option>
+                    </select>
+                </label>
+                <button id="pauseBtn">Pause</button>
+                <button id="exportBtn">Export</button>
+                <button id="aboutBtn">About</button>
+                <span id="status"></span>
+            </div>
+        </header>
+
+        <main class="grid">
+            <section class="card">
+                <div class="card-head"><h2>CPU</h2><span class="big" id="cpuValue">0%</span></div>
+                <div class="bar"><div class="fill" id="cpuBar"></div></div>
+                <canvas id="cpuGraph" width="400" height="60"></canvas>
+                <p class="muted" id="cpuInfo"></p>
+                <div class="cores" id="coresList"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Memory</h2><span class="big" id="ramValue">0%</span></div>
+                <div class="bar"><div class="fill" id="ramBar"></div></div>
+                <canvas id="ramGraph" width="400" height="60"></canvas>
+                <p class="muted" id="ramInfo"></p>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Storage</h2></div>
+                <div id="disksList"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Network</h2><span class="muted" id="netIface"></span></div>
+                <div class="net-row">
+                <div><span class="muted">Download</span><strong id="netDown">0 B/s</strong></div>
+                <div><span class="muted">Upload</span><strong id="netUp">0 B/s</strong></div>
+                </div>
+                <canvas id="netGraph" width="400" height="60"></canvas>
+                <p class="muted" id="netTotals"></p>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>System</h2></div>
+                <dl class="facts">
+                <dt>Uptime</dt><dd id="uptime">-</dd>
+                <dt>Peak CPU</dt><dd id="peakCpu">0%</dd>
+                <dt>Peak memory</dt><dd id="peakRam">0%</dd>
+                </dl>
+                <button id="resetPeaksBtn">Reset peaks</button>
+
+                <h3>Warn me at</h3>
+                <div class="thresholds">
+                <label>CPU <input type="number" id="warnCpu" min="10" max="100" /> %</label>
+                <label>Memory <input type="number" id="warnRam" min="10" max="100" /> %</label>
+                <label>Storage <input type="number" id="warnDisk" min="10" max="100" /> %</label>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><h2>Events</h2><button id="clearLogBtn">Clear</button></div>
+                <ul id="logList"></ul>
+                <p class="data-path">Saved at: <code id="dataPath"></code></p>
+            </section>
+        </main>
+    </div>
+
+    <script src="renderer.js"></script>
 </body>
 </html>
