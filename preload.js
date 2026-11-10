@@ -11,5 +11,7 @@ contextBridge.exposeInMainWorld("monitorApi", {
   clearLog: () => ipcRenderer.invoke("log:clear"),
   getDataPath: () => ipcRenderer.invoke("app:get-data-path"),
   log: (message) => ipcRenderer.send("renderer:log", message),
-  exportStats: () => ipcRenderer.invoke("stats:export")
+  exportStats: () => ipcRenderer.invoke("stats:export"),
+  openAbout: () => ipcRenderer.invoke('app:open-about'),
+  getStats: () => ipcRenderer.invoke('app:get-stats')
 });
