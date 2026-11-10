@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>About System Monitor</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="app about">
+        <h1>System Monitor</h1>
+        <p>Version <span id="version"></span></p>
+        <p>Electron <span id="electron"></span> . Node <span id="node"></span></p>
+        <p>Samples taken this session: <strong id="count"></strong></p>
+        <p class="data-path">Event log: <code id="path"></code></p>
+        <button id="closeBtn">Close</button>
+    </div>
+
+    <script src="about.js"></script>
+</body>
+</html>
