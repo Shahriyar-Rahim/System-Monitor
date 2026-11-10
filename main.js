@@ -1,5 +1,5 @@
 const { time, count } = require("console");
-const { BrowserWindow, app, ipcMain, dialog } = require("electron");
+const { BrowserWindow, app, ipcMain, dialog, Menu } = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -584,6 +584,8 @@ function createMenu() {
 app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
+  createMenu();
+  addLogEvent('monitor', "Monitoring Started");
 
   // addLogEvent('test', 'hello') //"TODO: delete this test"
   // console.log(readLog())
