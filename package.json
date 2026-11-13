@@ -4,14 +4,18 @@
   "description": "Live CPU, memory, storage and network monitor",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win",
+    "dist:all": "electron-builder -lw"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Shahriyar-Rahim/System-Monitor.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Md. Shahriyar Rahim <mdshahriyarrahim@gmail.com>",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
@@ -19,6 +23,32 @@
   },
   "homepage": "https://github.com/Shahriyar-Rahim/System-Monitor#readme",
   "devDependencies": {
-    "electron": "^45.2.3"
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.systemmonitor.app",
+    "productName": "System Monitor",
+    "executableName": "system-monitor",
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Utility",
+      "maintainer": "Md. Shahriyar Rahim <mdshahriyarrahim@gmail.com>"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    }
   }
 }
