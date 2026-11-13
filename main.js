@@ -1,9 +1,16 @@
 const { time, count } = require("console");
-const { BrowserWindow, app, ipcMain, dialog, Menu } = require("electron");
+const {
+  BrowserWindow,
+  app,
+  ipcMain,
+  dialog,
+  Menu,
+  shell,
+} = require("electron");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { eventLoopUtilization } = require("perf_hooks");
+const { execFile } = require("child_process");
 
 // memory monitor state helpers
 let previousCpu = null;
@@ -381,7 +388,7 @@ async function exportStats(win) {
   });
 
   const content = isCsv
-    ? [header].concat(rows.join("\n"))
+    ? [header, ...rows].join("\n") //[header].concat(rows.join("\n"))
     : JSON.stringify(
         {
           system: getSystemInfo(),
@@ -479,18 +486,29 @@ let aboutWindow = null;
 const loadPreload = path.join(__dirname, "preload.js");
 
 function createWindow() {
+
+  const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
+
   nainWindow = new BrowserWindow({
     width: 980,
     height: 780,
     minHeight: 760,
     minWidth: 560,
     title: "System Monitor",
+    icon: path.join(__dirname, "assets", iconFileName),
     webPreferences: {
       preload: loadPreload,
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: !app.isPackaged,
     },
   });
+
+  if (app.isPackaged) {
+    nainWindow.webContents.on("devtools-opened", () => {
+      nainWindow.webContents.closeDevTools();
+    });
+  }
 
   nainWindow.loadFile("index.html");
 
@@ -532,13 +550,24 @@ function openAboutWindow() {
 }
 
 function createMenu() {
+
+  const viewSubmenu = [
+    { role: "zoomIn" },
+    { role: "zoomOut" },
+    { role: "resetZoom" },
+  ];
+
+  if (!app.isPackaged) {
+    viewSubmenu.push({ type: "separator" });
+    viewSubmenu.push({ role: "toggleDevTools" });
+  }
   const template = [
     {
       label: "File",
       submenu: [
         {
           label: "Export Statistics...",
-          click: () => exportStats(mainWindow),
+          click: () => exportStats(nainWindow),
         },
         {
           label: "Open Data Folder",
@@ -563,13 +592,7 @@ function createMenu() {
     },
     {
       label: "View",
-      submenu: [
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { role: "resetZoom" },
-        { type: "separator" },
-        { role: "toggleDevTools" },
-      ],
+      submenu: viewSubmenu,
     },
     {
       label: "Help",
@@ -585,7 +608,7 @@ app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
   createMenu();
-  addLogEvent('monitor', "Monitoring Started");
+  addLogEvent("monitor", "Monitoring Started");
 
   // addLogEvent('test', 'hello') //"TODO: delete this test"
   // console.log(readLog())
