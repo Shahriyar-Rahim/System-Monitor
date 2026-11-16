@@ -107,7 +107,7 @@ function renderCpu(snapshot) {
     snapshot.history.map((h) => h.cpu),
     100,
   );
-  
+
   if (coresList.children.length !== snapshot.cpu.cores.length) {
     coresList.replaceChildren();
     snapshot.cpu.cores.forEach((_, i) => {
@@ -135,7 +135,226 @@ function renderCpu(snapshot) {
   });
 }
 
-
 // setInterval(() => {
 //   window.monitorApi.getSnapshot().then(renderCpu);
 // }, 1000);
+
+function renderMemory(snapshot) {
+  const m = snapshot.memory;
+  ramValue.textContent = m.percent + "%";
+  setBar(ramBar, m.percent, settings.warnRam);
+  drawGraph(
+    ramGraph,
+    snapshot.history.map((h) => h.ram),
+    100,
+  );
+  ramInfo.textContent =
+    `Used ${formatBytes(m.used)} of ${formatBytes(m.total)} · ` +
+    `Available ${formatBytes(m.available)}`;
+}
+
+function renderDisks(snapshot) {
+  disksList.replaceChildren();
+
+  if (snapshot.disks.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No drives detected";
+    disksList.appendChild(empty);
+    return;
+  }
+  snapshot.disks.forEach((disk) => {
+    const row = document.createElement("div");
+    row.className = "disk";
+    const title = document.createElement("div");
+    title.className = "disk-title";
+    const name = document.createElement("strong");
+    name.textContent = disk.name;
+    const percent = document.createElement("span");
+    percent.textContent = disk.percent + "%";
+    title.appendChild(name);
+    title.appendChild(percent);
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    setBar(fill, disk.percent, settings.warnDisk);
+    bar.appendChild(fill);
+    const info = document.createElement("p");
+    info.className = "muted";
+    info.textContent =
+      `${formatBytes(disk.used)} used of ${formatBytes(disk.total)} · ` +
+      `${formatBytes(disk.free)} free`;
+    row.appendChild(title);
+    row.appendChild(bar);
+    row.appendChild(info);
+    disksList.appendChild(row);
+  });
+}
+
+// setInterval(() => {
+//   window.monitorApi.getSnapshot().then((snap) => {
+//     renderCpu(snap);
+//     renderMemory(snap);
+//     renderDisks(snap);
+//   });
+// }, 1000);
+
+function renderNetwork(snapshot) {
+  const n = snapshot.network;
+  netIface.textContent = n.iface;
+  netDown.textContent = formatBytes(n.rx) + "/s";
+  netUp.textContent = formatBytes(n.tx) + "/s";
+  drawGraph(
+    netGraph,
+    snapshot.history.map((h) => h.rx + h.tx),
+    0,
+  );
+  netTotals.textContent = `Total received ${formatBytes(n.totalRx)} · sent ${formatBytes(n.totalTx)}`;
+}
+
+function renderSystem(snapshot) {
+  uptimeEl.textContent = formatUptime(snapshot.uptime);
+  peakCpuEl.textContent = snapshot.peaks.cpu + "%";
+  peakRamEl.textContent = snapshot.peaks.ram + "%";
+}
+
+async function renderLog() {
+  const events = await window.monitorApi.loadLog();
+  logList.replaceChildren();
+  if (events.length === 0) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "No events yet";
+    logList.appendChild(li);
+    return;
+  }
+  events.forEach((event) => {
+    const li = document.createElement("li");
+    const time = document.createElement("span");
+    time.className = "log-time";
+    time.textContent = new Date(event.time).toLocaleTimeString();
+    const tag = document.createElement("span");
+    tag.className = "tag " + event.type;
+    tag.textContent = event.type;
+    const message = document.createElement("span");
+    message.textContent = event.message;
+    li.appendChild(time);
+    li.appendChild(tag);
+    li.appendChild(message);
+    logList.appendChild(li);
+  });
+}
+
+// setInterval(() => {
+//   window.monitorApi.getSnapshot().then((snap) => {
+//     renderCpu(snap);
+//     renderMemory(snap);
+//     renderDisks(snap);
+//     renderNetwork(snap);
+//     renderSystem(snap);
+//   });
+//   renderLog();
+// }, 1000);
+
+async function refresh() {
+  const snapshot = await window.monitorApi.getSnapshot();
+  renderCpu(snapshot);
+  renderMemory(snapshot);
+  renderDisks(snapshot);
+  renderNetwork(snapshot);
+  renderSystem(snapshot);
+
+  if (snapshot.logVersion !== lastLogVersion) {
+    lastLogVersion = snapshot.logVersion;
+    renderLog();
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  timer = setInterval(refresh, settings.refreshMs);
+}
+function stopTimer() {
+  if (timer) clearInterval(timer);
+  timer = null;
+}
+function togglePause() {
+  paused = !paused;
+  pauseBtn.textContent = paused ? "Resume" : "Pause";
+  statusEl.textContent = paused ? "Paused" : "";
+  if (paused) stopTimer();
+  else {
+    refresh();
+    startTimer();
+  }
+}
+
+// refresh();
+// startTimer();
+
+async function saveSettings() {
+  const result = await window.monitorApi.saveSettings({
+    refreshMs: Number(refreshSelect.value),
+    warnCpu: Number(warnCpuInput.value),
+    warnRam: Number(warnRamInput.value),
+    warnDisk: Number(warnDiskInput.value),
+  });
+  settings = result.settings;
+  showSettings();
+  if (!paused) startTimer();
+}
+
+function showSettings() {
+  refreshSelect.value = String(settings.refreshMs);
+  warnCpuInput.value = settings.warnCpu;
+  warnRamInput.value = settings.warnRam;
+  warnDiskInput.value = settings.warnDisk;
+}
+
+async function exportStats() {
+  const result = await window.monitorApi.exportStats();
+  if (result.canceled) {
+    statusEl.textContent = "Export cancelled";
+    return;
+  }
+  statusEl.textContent = `Exported ${result.count} sample(s)`;
+}
+
+async function init() {
+    const info = await window.monitorApi.getInfo();
+    const speed = info.cpuSpeed ? ` @ ${info.cpuSpeed} MHz` : "";
+    systemLine.textContent = `${info.cpuModel} · ${info.cpuCount} cores${speed}`;
+
+    cpuInfo.textContent = `${info.hostname} · ${info.platform} ${info.release} (${info.arch})`;
+
+    settings = await window.monitorApi.loadSettings();
+    showSettings();
+
+    dataPathEl.textContent = await window.monitorApi.getDataPath();
+    window.monitorApi.log("Monitor window ready");
+
+    await refresh();
+    startTimer();
+}
+
+refreshSelect.addEventListener("change", saveSettings);
+warnCpuInput.addEventListener("change", saveSettings);
+warnRamInput.addEventListener("change", saveSettings);
+warnDiskInput.addEventListener("change", saveSettings);
+
+pauseBtn.addEventListener("click", togglePause);
+exportBtn.addEventListener("click", exportStats);
+resetPeaksBtn.addEventListener("click", async () => {
+  await window.monitorApi.resetPeaks();
+  refresh();
+});
+clearLogBtn.addEventListener("click", async () => {
+  await window.monitorApi.clearLog();
+  renderLog();
+});
+
+aboutBtn.addEventListener("click", () => {
+  window.monitorApi.openAbout();
+});
+init();
