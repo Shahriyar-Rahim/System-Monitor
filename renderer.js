@@ -238,7 +238,7 @@ async function renderLog() {
     tag.className = "tag " + event.type;
     tag.textContent = event.type;
     const message = document.createElement("span");
-    message.textContent = event.message;
+    message.textContent = event.msg;
     li.appendChild(time);
     li.appendChild(tag);
     li.appendChild(message);
