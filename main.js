@@ -1,4 +1,4 @@
-const { time, count } = require("console");
+const { time, count, timeStamp } = require("console");
 const {
   BrowserWindow,
   app,
@@ -75,9 +75,11 @@ function writeSettings(settings) {
 }
 
 function addLogEvent(type, msg) {
+  const now = Date.now();
   const ev = readLog();
   ev.push({
-    time: Date.now(),
+    time: now,
+    timeStamp: new Date(now).toLocaleString(),
     type,
     msg,
   });
@@ -486,7 +488,6 @@ let aboutWindow = null;
 const loadPreload = path.join(__dirname, "preload.js");
 
 function createWindow() {
-
   const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
 
   nainWindow = new BrowserWindow({
@@ -550,7 +551,6 @@ function openAboutWindow() {
 }
 
 function createMenu() {
-
   const viewSubmenu = [
     { role: "zoomIn" },
     { role: "zoomOut" },
