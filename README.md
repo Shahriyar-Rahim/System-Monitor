@@ -1,65 +1,69 @@
-# Project Title: [Insert Academic Title Here]
-
-**Author:** [Your Name]  
-**Date:** [Current Date]  
-**Subject:** [Project Category/Course Name]
-
----
-
-## 1. Abstract
-This project explores the implementation of [Project Objective]. By utilizing [Technologies/Methods], we aim to solve [Problem Statement]. This report details the architecture, methodology, and empirical results of the system.
-
-## 2. Introduction
-Provide a brief introduction to the project. Discuss the motivation behind the work and the specific goals intended to be achieved.
-
-## 3. Methodology
-The development followed a structured approach focusing on modularity and efficiency.
-- **Backend:** [e.g., Python/Node.js]
-- **Frontend:** [e.g., React/Vue]
-- **Database:** [e.g., PostgreSQL/Firebase]
-
-### 3.1 System Architecture
-Explain how the different components of the project interact with one another.
-
-## 4. Results and Visualizations
-The following section demonstrates the functional output of the system.
-
-### 4.1 Interface and User Experience
-Below are the visual representations of the project in its operational state.
-
-<!-- SCREENSHOTS PLACEHOLDER START -->
 <div align="center">
-  <img src="path/to/your/screenshot1.png" alt="Main Dashboard" width="80%">
-  <p><em>Figure 1: Overview of the primary user interface.</em></p>
-  
-  <br>
+  <img src="assets/icon.png" alt="System Monitor Logo" width="80" height="80" />
+  <h1>System Monitor</h1>
+  <p>A lightweight, cross-platform desktop application built with <strong>ElectronJS</strong> for real-time hardware telemetry, live time-series graphs, and configurable threshold alerts.</p>
 
-  <img src="path/to/your/screenshot2.png" alt="Detailed Feature" width="80%">
-  <p><em>Figure 2: Demonstration of the [Specific Feature] functionality.</em></p>
+  <p>
+    <img src="https://img.shields.io/badge/Electron-45.2.3-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
+    <img src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+    <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-D99A24?style=for-the-badge" alt="Platforms" />
+    <img src="https://img.shields.io/badge/License-ISC-blue?style=for-the-badge" alt="License" />
+  </p>
 </div>
-<!-- SCREENSHOTS PLACEHOLDER END -->
-
-## 5. Discussion
-Analyze the performance of the system based on the visuals provided above. Discuss any limitations encountered during development and how they were mitigated.
-
-## 6. Conclusion
-The project successfully demonstrates [Conclusion Summary]. Future work may involve [Potential Improvements].
-
-## 7. How to Run
-To replicate the results or run the project locally, follow these steps:
-
-1. **Clone the repository:**
-   ```bash
-   git clone [repository-url]
-   ```
-2. **Install dependencies:**
-   ```bash
-   npm install # or pip install -r requirements.txt
-   ```
-3. **Run the application:**
-   ```bash
-   npm start # or python main.py
-   ```
 
 ---
-*Generated as part of the [Project Name] documentation.*
+
+## Screenshots
+
+| Home Page | About Page |
+| :---: | :---: |
+| ![System Monitor Home](screenshots/ss1.png) | ![System Monitor About](screenshots/ss2.png) |
+
+---
+
+## Features
+
+* **Real-Time CPU Telemetry:** Tracks overall CPU utilization and individual logical core loads using differential kernel tick sampling.
+* **Platform-Aware Memory Profiling:** Accurately reports used and available RAM using `/proc/meminfo` on Linux and native OS APIs on Windows and macOS.
+* **Storage & Network Monitoring:** Displays mounted disk capacity (`fs.statfsSync`) and live download/upload speeds (`Rx`/`Tx`) with cumulative totals.
+* **Live Time-Series Sparklines:** Renders smooth HTML5 `<canvas>` graphs for CPU, memory, and network history with adaptive light and dark themes.
+* **Threshold Alerts & Persistent Logging:** Logs threshold warnings and system events to `system_log.json` and supports one-click **JSON** and **CSV** data export.
+
+## Installation & Usage
+
+### Run Locally (Development)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Shahriyar-Rahim/System-Monitor.git
+   cd System-Monitor
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the application:
+   ```bash
+   npm start
+   ```
+
+### Build Distributables
+
+Generate platform-specific installers in the `dist/` directory using `electron-builder`:
+
+* **Current OS:** `npm run dist`
+* **Linux (`.deb`, `.AppImage`):** `npm run dist:linux`
+* **Windows (`.exe`):** `npm run dist:win`
+
+## Project Architecture
+
+* **`main.js`** — Electron Main Process handling OS hardware polling, file persistence (`settings.json`, `system_log.json`), native menus, and IPC handlers.
+* **`preload.js`** — Context-isolated bridge exposing secure `window.monitorApi` methods to the frontend.
+* **`renderer.js`** — Renderer Process managing polling intervals, HTML5 Canvas sparklines, DOM updates, and user controls.
+* **`index.html` & `style.css`** — Semantic dashboard UI with strict Content Security Policy (`default-src 'self'`) and amber-accented light/dark mode support.
+
+## License
+
+ISC License — Developed by [Md. Shahriyar Rahim](https://github.com/Shahriyar-Rahim).
